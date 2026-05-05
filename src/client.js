@@ -43,6 +43,14 @@ class ShoonyaClient {
   // ---------------------------------------------------------------------------
 
   /**
+   * Set just the access token (useful when you already have a valid token).
+   * @param {string} token - Access token
+   */
+  setAccessToken(token) {
+    this._token = token;
+  }
+
+  /**
    * Manually set session credentials (useful when restoring a saved session).
    */
   setSession({ accessToken, uid, actid }) {
