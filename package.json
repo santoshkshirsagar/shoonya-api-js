@@ -1,0 +1,23 @@
+{
+  "name": "shoonya-api-js",
+  "version": "1.0.0",
+  "description": "Node.js SDK for the Shoonya trading API",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "node test/basic.test.js"
+  },
+  "keywords": [
+    "shoonya",
+    "trading",
+    "api",
+    "sdk",
+    "finvasia"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}
