@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Node.js SDK for the Shoonya trading API",
   "main": "src/index.js",
+  "files": [
+    "src/",
+    "README.md"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },
@@ -16,12 +20,13 @@
     "sdk",
     "finvasia"
   ],
+  "author": "Santosh Kshirsagar",
   "license": "MIT",
   "dependencies": {
     "ws": "^8.20.0"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/santoshkshirsagar/shoonya-api-js"
+    "url": "git+https://github.com/santoshkshirsagar/shoonya-api-js.git"
   }
 }
