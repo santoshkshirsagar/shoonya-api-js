@@ -69,10 +69,10 @@ class ShoonyaClient {
 
   async _post(path, data) {
     const url = `${this._base}${path}`;
-    const body = `jData=${encodeURIComponent(JSON.stringify(data))}`;
+    const body = `jData=${JSON.stringify(data)}`;
 
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-    if (this._token) headers['Authorization'] = this._token;
+    if (this._token) headers['Authorization'] = `Bearer ${this._token}`;
 
     const res = await fetch(url, { method: 'POST', headers, body });
 
