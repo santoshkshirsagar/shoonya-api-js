@@ -239,7 +239,7 @@ class ShoonyaWebSocket extends EventEmitter {
 
   _send(obj) {
     if (this._ws && this._ws.readyState === WebSocket.OPEN) {
-      this._ws.send(JSON.stringify(obj));
+      this._ws.send('jData=' + JSON.stringify(obj));
     }
   }
 

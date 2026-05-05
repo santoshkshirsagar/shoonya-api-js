@@ -63,14 +63,6 @@ console.log(session.access_token); // save for session restore
 console.log(session.expires_in);
 ```
 
-### Use an existing access token
-
-If you already have a valid access token, skip the code-exchange flow:
-
-```js
-client.setAccessToken('ea97cd3f...');
-```
-
 ### Restore a saved session
 
 To restore a full session including `uid` and `actid`:
@@ -530,7 +522,6 @@ const ws     = new ShoonyaWebSocket(client, { wsUrl: 'wss://api.shoonya.com/Nore
 | Method | Endpoint |
 |---|---|
 | `generateAccessToken({ code, checksum })` | `POST /NorenWClientAPI/GenAcsTok` |
-| `setAccessToken(token)` | Set a token directly, skipping the code flow |
 | `logout()` | `POST /NorenWClientTP/Logout` |
 | `getUserDetails()` | `POST /NorenWClientAPI/UserDetails` |
 | `getClientDetails()` | `POST /NorenWClientAPI/ClientDetails` |
