@@ -19,5 +19,9 @@
   "license": "MIT",
   "dependencies": {
     "ws": "^8.20.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/santoshkshirsagar/shoonya-api-js"
   }
 }
