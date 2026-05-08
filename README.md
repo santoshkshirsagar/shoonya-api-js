@@ -285,7 +285,7 @@ try {
 
 ## WebSocket — live market data
 
-`ShoonyaWebSocket` connects to `wss://api.shoonya.com/NorenWSTP/`. It extends `EventEmitter` and automatically re-authenticates and re-subscribes all active feeds if the connection drops.
+`ShoonyaWebSocket` connects to `wss://api.shoonya.com/NorenWSAPI/`. It extends `EventEmitter` and automatically re-authenticates and re-subscribes all active feeds if the connection drops.
 
 ### Setup
 
@@ -302,7 +302,7 @@ const ws = new ShoonyaWebSocket(client);
 
 | Option | Default | Description |
 |---|---|---|
-| `wsUrl` | `wss://api.shoonya.com/NorenWSTP/` | Override WebSocket URL |
+| `wsUrl` | `wss://api.shoonya.com/NorenWSAPI/` | Override WebSocket URL |
 | `reconnect` | `true` | Auto-reconnect on drop |
 | `reconnectDelay` | `3000` | Ms between reconnect attempts |
 
@@ -504,13 +504,131 @@ async function main() {
 main();
 ```
 
+### Runnable WebSocket test script
+
+Copy this into `test_websocket.js` and run with `node test_websocket.js`. It mirrors the Python `test_websocket_feed.py` example from the Shoonya reference repo.
+
+```js
+// test_websocket.js
+const { ShoonyaClient, ShoonyaWebSocket } = require('shoonya-api-js');
+
+// ── Credentials ──────────────────────────────────────────────────────────────
+// Fill these in from your broker dashboard / cred.yml equivalent
+const ACCESS_TOKEN = 'your_access_token_here';
+const UID          = 'YOUR_USER_ID';
+const ACCOUNT_ID   = 'YOUR_ACCOUNT_ID';
+
+// ── Scrips to watch (exchange|token) ─────────────────────────────────────────
+// NSE|11630 = HDFC Bank, NSE|22 = ACC, BSE|522032 = ACC on BSE
+const TOUCHLINE_SCRIPS = ['NSE|11630', 'NSE|22'];
+const DEPTH_SCRIP      = 'NSE|11630';
+
+// ── Symbol map so callbacks print a friendly name ─────────────────────────────
+const SYMBOL_DICT = {}; // keyed by "EXCH|TOKEN"
+
+// ── Callbacks ─────────────────────────────────────────────────────────────────
+function onConnected() {
+  console.log('[ws] connected — subscribing feeds');
+  ws.subscribeTouchline(TOUCHLINE_SCRIPS);
+  ws.subscribeDepth(DEPTH_SCRIP);
+  ws.subscribeOrderUpdates();
+}
+
+function onTouchline(msg) {
+  // msg fields:
+  //   e   exchange       tk  token
+  //   lp  LTP            pc  % change
+  //   v   volume         o   open
+  //   h   high           l   low
+  //   c   close          ap  avg trade price
+  //   bp1 best bid       sp1 best ask
+  //   ft  feed timestamp (Unix seconds)
+  const key = `${msg.e}|${msg.tk}`;
+
+  if (SYMBOL_DICT[key]) {
+    Object.assign(SYMBOL_DICT[key], msg); // merge partial updates
+  } else {
+    SYMBOL_DICT[key] = { ...msg };
+  }
+
+  const ts = msg.ft ? new Date(msg.ft * 1000).toLocaleTimeString() : '';
+  console.log(`[touchline] ${key}  LTP=${msg.lp}  chg=${msg.pc}%  vol=${msg.v}  ${ts}`);
+}
+
+function onDepth(msg) {
+  // msg fields:
+  //   bp1–bp5  bid prices     bq1–bq5  bid quantities
+  //   sp1–sp5  ask prices     sq1–sq5  ask quantities
+  //   tbq      total bid qty  tsq      total ask qty
+  //   lc       lower circuit  uc       upper circuit
+  const key = `${msg.e}|${msg.tk}`;
+  console.log(
+    `[depth]     ${key}  bid=${msg.bp1}×${msg.bq1}  ask=${msg.sp1}×${msg.sq1}` +
+    `  totalBid=${msg.tbq}  totalAsk=${msg.tsq}`
+  );
+}
+
+function onOrder(msg) {
+  // msg.t === 'ok'  → subscription ack
+  // msg.t === 'om'  → live order event
+  //   norenordno  status  reporttype  fillshares  avgprc
+  if (msg.t === 'om') {
+    console.log(`[order] ${msg.norenordno}  ${msg.status}  ${msg.reporttype}`);
+  } else {
+    console.log('[order] subscribed to order feed');
+  }
+}
+
+function onError(err) {
+  console.error('[ws] error:', err.message);
+}
+
+function onClose() {
+  console.log('[ws] disconnected');
+}
+
+// ── Setup ─────────────────────────────────────────────────────────────────────
+const client = new ShoonyaClient();
+client.setSession({ accessToken: ACCESS_TOKEN, uid: UID, actid: ACCOUNT_ID });
+
+const ws = new ShoonyaWebSocket(client, { reconnect: true, reconnectDelay: 3000 });
+
+ws.on('connected', onConnected);
+ws.on('touchline',  onTouchline);
+ws.on('depth',      onDepth);
+ws.on('order',      onOrder);
+ws.on('error',      onError);
+ws.on('close',      onClose);
+
+ws.connect();
+console.log('[ws] connecting…');
+
+// ── Graceful shutdown on Ctrl-C ───────────────────────────────────────────────
+process.on('SIGINT', () => {
+  console.log('\n[ws] shutting down');
+  ws.disconnect();
+  process.exit(0);
+});
+```
+
+**Expected output** once connected:
+
+```
+[ws] connecting…
+[ws] connected — subscribing feeds
+[touchline] NSE|11630  LTP=1723.45  chg=0.82%  vol=3421900  14:23:01
+[depth]     NSE|11630  bid=1723.40×150  ask=1723.50×200  totalBid=982340  totalAsk=876120
+[touchline] NSE|22     LTP=2198.00  chg=-0.34%  vol=87234   14:23:02
+[order] subscribed to order feed
+```
+
 ---
 
 ## Custom base URL
 
 ```js
 const client = new ShoonyaClient({ baseUrl: 'https://api.shoonya.com' });
-const ws     = new ShoonyaWebSocket(client, { wsUrl: 'wss://api.shoonya.com/NorenWSTP/' });
+const ws     = new ShoonyaWebSocket(client, { wsUrl: 'wss://api.shoonya.com/NorenWSAPI/' });
 ```
 
 ---

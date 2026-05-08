@@ -3,7 +3,7 @@
 const { EventEmitter } = require('events');
 const WebSocket = require('ws');
 
-const WS_URL = 'wss://api.shoonya.com/NorenWSTP/';
+const WS_URL = 'wss://api.shoonya.com/NorenWSAPI/';
 
 /**
  * WebSocket client for Shoonya live market data.
@@ -70,7 +70,7 @@ class ShoonyaWebSocket extends EventEmitter {
 
     ws.on('open', () => {
       const { accessToken, uid, actid } = this._client.getSession();
-      this._send({ t: 'c', uid, actid, source: 'WEB', usertoken: accessToken });
+      this._send({ t: 'c', uid, actid, source: 'API', susertoken: accessToken });
     });
 
     ws.on('message', (data) => {
@@ -155,7 +155,7 @@ class ShoonyaWebSocket extends EventEmitter {
     const list = this._normalize(scrips);
     list.forEach(s => this._touchlineSubs.add(s));
     if (this._connected) {
-      this._send({ t: 't', k: list.join('|') });
+      this._send({ t: 't', k: list.join('#') });
     }
   }
 
@@ -168,7 +168,7 @@ class ShoonyaWebSocket extends EventEmitter {
     const list = this._normalize(scrips);
     list.forEach(s => this._touchlineSubs.delete(s));
     if (this._connected) {
-      this._send({ t: 'u', k: list.join('|') });
+      this._send({ t: 'u', k: list.join('#') });
     }
   }
 
@@ -215,9 +215,10 @@ class ShoonyaWebSocket extends EventEmitter {
    * Unsubscribe from the order update feed.
    */
   unsubscribeOrderUpdates() {
+    const actid = this._orderSubActid;
     this._orderSubActid = null;
     if (this._connected) {
-      this._send({ t: 'ud' });
+      this._send({ t: 'uo', actid });
     }
   }
 
@@ -227,7 +228,7 @@ class ShoonyaWebSocket extends EventEmitter {
 
   _resubscribeAll() {
     if (this._touchlineSubs.size > 0) {
-      this._send({ t: 't', k: [...this._touchlineSubs].join('|') });
+      this._send({ t: 't', k: [...this._touchlineSubs].join('#') });
     }
     if (this._depthSubs.size > 0) {
       this._send({ t: 'd', k: [...this._depthSubs].join('#') });
