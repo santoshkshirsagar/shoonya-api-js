@@ -313,11 +313,13 @@ ws.connect();    // opens socket and authenticates
 ws.disconnect(); // closes cleanly, disables auto-reconnect
 ```
 
+A keepalive heartbeat (`{"t":"h"}`) is sent automatically every 3 seconds after authentication — no setup required.
+
 ### Events
 
 | Event | Fired when |
 |---|---|
-| `connected` | Auth ack received — safe to subscribe |
+| `connected` | Auth ack received (`t:'ak'` OAuth flow or `t:'ck'` legacy) — safe to subscribe |
 | `touchline` | Touchline ack (`t:'tk'`) or live update (`t:'tf'`) |
 | `depth` | Depth ack (`t:'dk'`) or live update (`t:'df'`) |
 | `order` | Order sub ack (`t:'ok'`) or order event (`t:'om'`) |

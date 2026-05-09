@@ -4,23 +4,8 @@ const { EventEmitter } = require('events');
 const WebSocket = require('ws');
 
 const WS_URL = 'wss://api.shoonya.com/NorenWSAPI/';
+const PING_INTERVAL_MS = 3000;
 
-/**
- * WebSocket client for Shoonya live market data.
- *
- * Events emitted:
- *   'connected'           – authentication succeeded, ready to subscribe
- *   'touchline'           – touchline ack (t:'tk') or update (t:'tf')
- *   'depth'               – depth ack (t:'dk') or update (t:'df')
- *   'order'               – order update ack (t:'ok') or update (t:'om')
- *   'touchlineUnsubscribed' – unsubscribe touchline ack (t:'uk')
- *   'depthUnsubscribed'   – unsubscribe depth ack (t:'udk')
- *   'orderUnsubscribed'   – unsubscribe order update ack (t:'uok')
- *   'error'               – Error object
- *   'close'               – connection closed
- *
- * @extends EventEmitter
- */
 class ShoonyaWebSocket extends EventEmitter {
   /**
    * @param {import('./client').ShoonyaClient} client - An authenticated ShoonyaClient instance
@@ -39,11 +24,12 @@ class ShoonyaWebSocket extends EventEmitter {
     this._ws = null;
     this._connected = false;
     this._closing = false;
+    this._pingTimer = null;
 
     // Track subscriptions so they survive reconnects
     this._touchlineSubs = new Set(); // "NSE|22"
     this._depthSubs = new Set();     // "NSE|22"
-    this._orderSubActid = null;      // actid if order updates are subscribed
+    this._orderSubActid = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -58,6 +44,7 @@ class ShoonyaWebSocket extends EventEmitter {
   disconnect() {
     this._closing = true;
     this._connected = false;
+    this._stopPing();
     if (this._ws) {
       this._ws.close();
       this._ws = null;
@@ -70,7 +57,8 @@ class ShoonyaWebSocket extends EventEmitter {
 
     ws.on('open', () => {
       const { accessToken, uid, actid } = this._client.getSession();
-      this._send({ t: 'c', uid, actid, source: 'API', susertoken: accessToken });
+      // Connect message: t='a', token field is 'accesstoken'
+      this._send({ t: 'a', uid, actid, source: 'API', accesstoken: accessToken });
     });
 
     ws.on('message', (data) => {
@@ -81,6 +69,7 @@ class ShoonyaWebSocket extends EventEmitter {
 
     ws.on('close', () => {
       this._connected = false;
+      this._stopPing();
       this.emit('close');
       if (!this._closing && this._reconnect) {
         setTimeout(() => this._openSocket(), this._reconnectDelay);
@@ -96,13 +85,16 @@ class ShoonyaWebSocket extends EventEmitter {
 
   _handleMessage(msg) {
     switch (msg.t) {
+      // 'ak' is the OAuth flow ack; 'ck' is the legacy login ack — handle both
+      case 'ak':
       case 'ck':
-        if (msg.s === 'Ok') {
+        if (msg.s === 'OK') {
           this._connected = true;
+          this._startPing();
           this._resubscribeAll();
           this.emit('connected', msg);
         } else {
-          this.emit('error', new Error(`WebSocket auth failed (uid: ${msg.uid})`));
+          this.emit('error', new Error(`WebSocket auth failed: ${msg.emsg || msg.s}`));
         }
         break;
 
@@ -146,10 +138,7 @@ class ShoonyaWebSocket extends EventEmitter {
    * Subscribe to touchline (LTP + top-of-book) for one or more scrips.
    *
    * @param {string|string[]|{exch:string,token:string}[]} scrips
-   *   Accepted formats:
-   *     "NSE|22"
-   *     ["NSE|22", "BSE|508123"]
-   *     [{exch:"NSE", token:"22"}]
+   *   "NSE|22"  |  ["NSE|22","BSE|508123"]  |  [{exch:"NSE",token:"22"}]
    */
   subscribeTouchline(scrips) {
     const list = this._normalize(scrips);
@@ -159,11 +148,7 @@ class ShoonyaWebSocket extends EventEmitter {
     }
   }
 
-  /**
-   * Unsubscribe from touchline feed for one or more scrips.
-   *
-   * @param {string|string[]|{exch:string,token:string}[]} scrips
-   */
+  /** @param {string|string[]|{exch:string,token:string}[]} scrips */
   unsubscribeTouchline(scrips) {
     const list = this._normalize(scrips);
     list.forEach(s => this._touchlineSubs.delete(s));
@@ -185,11 +170,7 @@ class ShoonyaWebSocket extends EventEmitter {
     }
   }
 
-  /**
-   * Unsubscribe from depth feed for one or more scrips.
-   *
-   * @param {string|string[]|{exch:string,token:string}[]} scrips
-   */
+  /** @param {string|string[]|{exch:string,token:string}[]} scrips */
   unsubscribeDepth(scrips) {
     const list = this._normalize(scrips);
     list.forEach(s => this._depthSubs.delete(s));
@@ -200,8 +181,6 @@ class ShoonyaWebSocket extends EventEmitter {
 
   /**
    * Subscribe to order update feed for the logged-in account.
-   * Emits 'order' events for both the ack (t:'ok') and every update (t:'om').
-   *
    * @param {string} [actid] - Defaults to the actid stored in the client session
    */
   subscribeOrderUpdates(actid) {
@@ -211,9 +190,6 @@ class ShoonyaWebSocket extends EventEmitter {
     }
   }
 
-  /**
-   * Unsubscribe from the order update feed.
-   */
   unsubscribeOrderUpdates() {
     const actid = this._orderSubActid;
     this._orderSubActid = null;
@@ -238,15 +214,29 @@ class ShoonyaWebSocket extends EventEmitter {
     }
   }
 
-  _send(obj) {
-    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
-      this._ws.send('jData=' + JSON.stringify(obj));
+  _startPing() {
+    this._stopPing();
+    this._pingTimer = setInterval(() => {
+      if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+        this._ws.send('{"t":"h"}');
+      }
+    }, PING_INTERVAL_MS);
+  }
+
+  _stopPing() {
+    if (this._pingTimer) {
+      clearInterval(this._pingTimer);
+      this._pingTimer = null;
     }
   }
 
-  /**
-   * Normalise scrip input to an array of "EXCH|TOKEN" strings.
-   */
+  // WebSocket messages are raw JSON strings (no 'jData=' prefix — that's REST only)
+  _send(obj) {
+    if (this._ws && this._ws.readyState === WebSocket.OPEN) {
+      this._ws.send(JSON.stringify(obj));
+    }
+  }
+
   _normalize(scrips) {
     const arr = Array.isArray(scrips) ? scrips : [scrips];
     return arr.map(s => (typeof s === 'string' ? s : `${s.exch}|${s.token}`));
