@@ -442,6 +442,141 @@ class ShoonyaClient {
       seg, exch, prd,
     }));
   }
+
+  // ---------------------------------------------------------------------------
+  // Orders — exit bracket / cover
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Exit a bracket (prd: 'B') or cover (prd: 'H') order.
+   *
+   * Required: norenordno, prd ('H' or 'B')
+   */
+  async exitOrder({ norenordno, prd } = {}) {
+    return this._post('/NorenWClientAPI/ExitSNOOrder', this._pick({
+      uid: this._uid,
+      norenordno,
+      prd,
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Market data — charts
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Intraday OHLCV candles (time-price series).
+   *
+   * @param {object} params
+   * @param {string} params.exch  - Exchange (e.g. "NSE")
+   * @param {string} params.token - Contract token
+   * @param {number} params.st    - Start time as Unix timestamp (seconds)
+   * @param {number} [params.et]  - End time as Unix timestamp (optional, defaults to now)
+   * @param {string} [params.intrv] - Candle interval in minutes: "1","3","5","10","15","30","60","120","240"
+   */
+  async getTimePriceSeries({ exch, token, st, et, intrv } = {}) {
+    return this._post('/NorenWClientAPI/TPSeries', this._pick({
+      uid: this._uid,
+      exch,
+      token,
+      st: st !== undefined ? String(st) : undefined,
+      et: et !== undefined ? String(et) : undefined,
+      intrv: intrv !== undefined ? String(intrv) : undefined,
+    }));
+  }
+
+  /**
+   * Daily (EOD) OHLCV candles.
+   *
+   * @param {object} params
+   * @param {string} params.exch  - Exchange (e.g. "NSE")
+   * @param {string} params.tsym  - Trading symbol (e.g. "RELIANCE-EQ")
+   * @param {number} [params.from] - Start date as Unix timestamp (seconds)
+   * @param {number} [params.to]   - End date as Unix timestamp (seconds)
+   */
+  async getDailyPriceSeries({ exch, tsym, from: fromDate, to: toDate } = {}) {
+    return this._post('/NorenWClientAPI/EODChartData', this._pick({
+      uid: this._uid,
+      sym: `${exch}:${tsym}`,
+      from: fromDate !== undefined ? String(fromDate) : undefined,
+      to: toDate !== undefined ? String(toDate) : undefined,
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Market data — options
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get option chain for a symbol around a strike price.
+   *
+   * @param {object} params
+   * @param {string} params.exch    - Exchange (e.g. "NFO")
+   * @param {string} params.tsym    - Trading symbol of any option/future for that underlying
+   * @param {number} params.strprc  - Mid/centre strike price for the chain
+   * @param {number} [params.cnt]   - Number of strikes on each side (default 2, so 2×2×2 = 8 contracts)
+   */
+  async getOptionChain({ exch, tsym, strprc, cnt } = {}) {
+    return this._post('/NorenWClientAPI/GetOptionChain', this._pick({
+      uid: this._uid,
+      exch,
+      tsym,
+      strprc: strprc !== undefined ? String(strprc) : undefined,
+      cnt: cnt !== undefined ? String(cnt) : undefined,
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Calculators
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Calculate SPAN + exposure margin for a list of positions.
+   *
+   * @param {object} params
+   * @param {string} [params.actid]
+   * @param {Array}  params.positions - Array of position objects
+   *   Each object: { prd, exch, instname, symname, exd, optt, strprc, buyqty, sellqty, netqty }
+   */
+  async spanCalculator({ actid, positions } = {}) {
+    return this._post('/NorenWClientAPI/SpanCalc', {
+      actid: actid || this._actid,
+      pos: positions,
+    });
+  }
+
+  /**
+   * Calculate option greeks (delta, gamma, theta, rho, vega).
+   *
+   * @param {object} params
+   * @param {string} params.exd        - Expiry date in DD-MMM-YYYY format (e.g. "29-DEC-2022")
+   * @param {string} params.strprc     - Strike price
+   * @param {string} params.sptprc     - Spot price
+   * @param {string} params.int_rate   - Interest rate
+   * @param {string} params.volatility - Volatility
+   * @param {string} params.optt       - Option type: "CE" or "PE"
+   */
+  async getOptionGreek({ actid, exd, strprc, sptprc, int_rate, volatility, optt } = {}) {
+    return this._post('/NorenWClientAPI/GetOptionGreek', this._pick({
+      actid: actid || this._actid,
+      exd, strprc, sptprc, int_rate, volatility, optt,
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auth — forgot password
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Trigger a forgot-password OTP to the registered mobile/email.
+   *
+   * @param {object} params
+   * @param {string} params.uid - User ID
+   * @param {string} params.pan - PAN number
+   */
+  async forgotPasswordOTP({ uid, pan } = {}) {
+    return this._post('/NorenWClientAPI/FgtPwdOTP', { uid, pan });
+  }
 }
 
 module.exports = { ShoonyaClient, ShoonyaApiError };

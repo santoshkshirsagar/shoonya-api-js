@@ -1,6 +1,6 @@
 {
   "name": "shoonya-api-js",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Node.js SDK for the Shoonya trading API",
   "main": "src/index.js",
   "files": [

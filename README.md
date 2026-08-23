@@ -671,6 +671,13 @@ const ws     = new ShoonyaWebSocket(client, { wsUrl: 'wss://api.shoonya.com/Nore
 | `getLimits({ prd?, seg?, exch? })` | `POST /NorenWClientAPI/Limits` |
 | `getSubLimits()` | `POST /NorenWClientAPI/GetSubLimits` |
 | `getMaxPayoutAmount({ seg?, exch?, prd? })` | `POST /NorenWClientAPI/GetMaxPayoutAmount` |
+| `exitOrder({ norenordno, prd })` | `POST /NorenWClientAPI/ExitSNOOrder` |
+| `getTimePriceSeries({ exch, token, st, et?, intrv? })` | `POST /NorenWClientAPI/TPSeries` |
+| `getDailyPriceSeries({ exch, tsym, from?, to? })` | `POST /NorenWClientAPI/EODChartData` |
+| `getOptionChain({ exch, tsym, strprc, cnt? })` | `POST /NorenWClientAPI/GetOptionChain` |
+| `spanCalculator({ actid?, positions })` | `POST /NorenWClientAPI/SpanCalc` |
+| `getOptionGreek({ actid?, exd, strprc, sptprc, int_rate, volatility, optt })` | `POST /NorenWClientAPI/GetOptionGreek` |
+| `forgotPasswordOTP({ uid, pan })` | `POST /NorenWClientAPI/FgtPwdOTP` |
 
 ### WebSocket — `ShoonyaWebSocket`
 
